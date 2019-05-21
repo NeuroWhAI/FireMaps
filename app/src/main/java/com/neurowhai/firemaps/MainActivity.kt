@@ -1,8 +1,8 @@
 package com.neurowhai.firemaps
 
 import android.Manifest
-import android.app.Activity
 import android.content.pm.PackageManager
+import android.os.Build
 import android.support.v7.app.AppCompatActivity
 import android.os.Bundle
 import android.support.v4.app.ActivityCompat
@@ -36,7 +36,8 @@ class MainActivity : AppCompatActivity() {
 
                 callback?.invoke(origin, true, true)
 
-                if (ContextCompat.checkSelfPermission(mWebView.context, Manifest.permission.ACCESS_FINE_LOCATION)
+                if (Build.VERSION.SDK_INT >= 23
+                    && ContextCompat.checkSelfPermission(mWebView.context, Manifest.permission.ACCESS_FINE_LOCATION)
                     == PackageManager.PERMISSION_DENIED
                 ) {
                     // Request a permission for fine location.
