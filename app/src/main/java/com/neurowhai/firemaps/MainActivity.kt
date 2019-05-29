@@ -27,6 +27,10 @@ class MainActivity : AppCompatActivity() {
         webSettings.javaScriptEnabled = true
         webSettings.setGeolocationEnabled(true)
 
+        if (Build.VERSION.SDK_INT > 16) {
+            webSettings.mediaPlaybackRequiresUserGesture = false
+        }
+
         mWebView.webChromeClient = object: WebChromeClient() {
             override fun onGeolocationPermissionsShowPrompt(
                 origin: String?,
