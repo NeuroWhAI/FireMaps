@@ -1,10 +1,13 @@
 package com.neurowhai.firemaps
 
 import android.Manifest
+import android.content.Intent
 import android.content.pm.PackageManager
+import android.net.Uri
 import android.os.Build
 import android.support.v7.app.AppCompatActivity
 import android.os.Bundle
+import android.provider.MediaStore
 import android.support.v4.app.ActivityCompat
 import android.support.v4.content.ContextCompat
 import android.support.v7.app.AlertDialog
@@ -13,7 +16,13 @@ import android.webkit.*
 
 class MainActivity : AppCompatActivity() {
 
+    private val LOCATION_PERMISSION_CODE = 0
+    private val STORAGE_PERMISSION_CODE = 1
+
+    private val FILE_SELECTED_CODE = 2001
+
     private lateinit var mWebView: WebView
+    private var onFileSelected: ValueCallback<Array<Uri>>? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         val activity = this
@@ -40,12 +49,13 @@ class MainActivity : AppCompatActivity() {
 
                 callback?.invoke(origin, true, true)
 
-                if (Build.VERSION.SDK_INT >= 23
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M
                     && ContextCompat.checkSelfPermission(mWebView.context, Manifest.permission.ACCESS_FINE_LOCATION)
                     == PackageManager.PERMISSION_DENIED
                 ) {
                     // Request a permission for fine location.
-                    ActivityCompat.requestPermissions(activity, arrayOf(Manifest.permission.ACCESS_FINE_LOCATION), 0)
+                    val permissions = arrayOf(Manifest.permission.ACCESS_FINE_LOCATION)
+                    ActivityCompat.requestPermissions(activity, permissions, LOCATION_PERMISSION_CODE)
                 }
             }
 
@@ -73,6 +83,30 @@ class MainActivity : AppCompatActivity() {
 
                 return true
             }
+
+            override fun onShowFileChooser(
+                webView: WebView?,
+                filePathCallback: ValueCallback<Array<Uri>>?,
+                fileChooserParams: FileChooserParams?
+            ): Boolean {
+                onFileSelected = filePathCallback
+
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M
+                    && ContextCompat.checkSelfPermission(mWebView.context, Manifest.permission.READ_EXTERNAL_STORAGE)
+                    == PackageManager.PERMISSION_DENIED
+                ) {
+                    // Request a permission for reading file.
+                    val permissions = arrayOf(
+                        Manifest.permission.READ_EXTERNAL_STORAGE,
+                        Manifest.permission.WRITE_EXTERNAL_STORAGE)
+                    ActivityCompat.requestPermissions(activity, permissions, STORAGE_PERMISSION_CODE)
+                }
+                else {
+                    selectFile()
+                }
+
+                return true
+            }
         }
 
         mWebView.loadUrl("https://firemaps.neurowhai.cf")
@@ -94,9 +128,47 @@ class MainActivity : AppCompatActivity() {
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
 
-        if (requestCode == 0
-            && grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-            mWebView.reload()
+        if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+            when (requestCode) {
+                LOCATION_PERMISSION_CODE -> mWebView.reload()
+                STORAGE_PERMISSION_CODE -> selectFile()
+            }
         }
+        else {
+            when (requestCode) {
+                STORAGE_PERMISSION_CODE -> {
+                    onFileSelected?.onReceiveValue(null)
+                    onFileSelected = null
+                }
+            }
+        }
+    }
+
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        if (requestCode == FILE_SELECTED_CODE) {
+            if (resultCode == RESULT_OK) {
+                onFileSelected?.onReceiveValue(WebChromeClient.FileChooserParams.parseResult(resultCode, data))
+            }
+            else {
+                onFileSelected?.onReceiveValue(null)
+                onFileSelected = null
+            }
+        }
+    }
+
+    fun selectFile() {
+        if (onFileSelected == null) {
+            return
+        }
+
+        val pickIntent = Intent(Intent.ACTION_PICK)
+        pickIntent.setDataAndType(
+            MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
+            MediaStore.Images.Media.CONTENT_TYPE)
+
+        val pickTitle = "사진을 가져옵니다."
+        val chooserIntent = Intent.createChooser(pickIntent, pickTitle)
+
+        startActivityForResult(chooserIntent, FILE_SELECTED_CODE)
     }
 }
