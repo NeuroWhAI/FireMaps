@@ -4,15 +4,17 @@ import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
+import android.net.http.SslError
 import android.os.Build
-import android.support.v7.app.AppCompatActivity
 import android.os.Bundle
 import android.provider.MediaStore
 import android.support.v4.app.ActivityCompat
 import android.support.v4.content.ContextCompat
 import android.support.v7.app.AlertDialog
+import android.support.v7.app.AppCompatActivity
 import android.view.KeyEvent
 import android.webkit.*
+
 
 class MainActivity : AppCompatActivity() {
 
@@ -30,6 +32,7 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
+        WebView.setWebContentsDebuggingEnabled(true)
         mWebView = findViewById(R.id.activity_main_webview)
 
         val webSettings = mWebView.settings
@@ -38,6 +41,23 @@ class MainActivity : AppCompatActivity() {
 
         if (Build.VERSION.SDK_INT > 16) {
             webSettings.mediaPlaybackRequiresUserGesture = false
+        }
+
+        mWebView.webViewClient = object: WebViewClient() {
+            override fun onReceivedSslError(
+                view: WebView?,
+                handler: SslErrorHandler?,
+                error: SslError?
+            ) {
+                if (error == null) {
+                    return super.onReceivedSslError(view, handler, error)
+                }
+
+                val cert = error.certificate
+                if (cert.issuedTo.cName == "cctvsec.ktict.co.kr") {
+                    handler?.proceed()
+                }
+            }
         }
 
         mWebView.webChromeClient = object: WebChromeClient() {
@@ -50,16 +70,28 @@ class MainActivity : AppCompatActivity() {
                 callback?.invoke(origin, true, true)
 
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M
-                    && ContextCompat.checkSelfPermission(mWebView.context, Manifest.permission.ACCESS_FINE_LOCATION)
+                    && ContextCompat.checkSelfPermission(
+                        mWebView.context,
+                        Manifest.permission.ACCESS_FINE_LOCATION
+                    )
                     == PackageManager.PERMISSION_DENIED
                 ) {
                     // Request a permission for fine location.
                     val permissions = arrayOf(Manifest.permission.ACCESS_FINE_LOCATION)
-                    ActivityCompat.requestPermissions(activity, permissions, LOCATION_PERMISSION_CODE)
+                    ActivityCompat.requestPermissions(
+                        activity,
+                        permissions,
+                        LOCATION_PERMISSION_CODE
+                    )
                 }
             }
 
-            override fun onJsAlert(view: WebView?, url: String?, message: String?, result: JsResult?): Boolean {
+            override fun onJsAlert(
+                view: WebView?,
+                url: String?,
+                message: String?,
+                result: JsResult?
+            ): Boolean {
                 AlertDialog.Builder(view!!.context)
                     .setTitle("알림")
                     .setMessage(message)
@@ -71,7 +103,12 @@ class MainActivity : AppCompatActivity() {
                 return true
             }
 
-            override fun onJsConfirm(view: WebView?, url: String?, message: String?, result: JsResult?): Boolean {
+            override fun onJsConfirm(
+                view: WebView?,
+                url: String?,
+                message: String?,
+                result: JsResult?
+            ): Boolean {
                 AlertDialog.Builder(view!!.context)
                     .setTitle("확인")
                     .setMessage(message)
@@ -92,14 +129,22 @@ class MainActivity : AppCompatActivity() {
                 onFileSelected = filePathCallback
 
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M
-                    && ContextCompat.checkSelfPermission(mWebView.context, Manifest.permission.READ_EXTERNAL_STORAGE)
+                    && ContextCompat.checkSelfPermission(
+                        mWebView.context,
+                        Manifest.permission.READ_EXTERNAL_STORAGE
+                    )
                     == PackageManager.PERMISSION_DENIED
                 ) {
                     // Request a permission for reading file.
                     val permissions = arrayOf(
                         Manifest.permission.READ_EXTERNAL_STORAGE,
-                        Manifest.permission.WRITE_EXTERNAL_STORAGE)
-                    ActivityCompat.requestPermissions(activity, permissions, STORAGE_PERMISSION_CODE)
+                        Manifest.permission.WRITE_EXTERNAL_STORAGE
+                    )
+                    ActivityCompat.requestPermissions(
+                        activity,
+                        permissions,
+                        STORAGE_PERMISSION_CODE
+                    )
                 }
                 else {
                     selectFile()
@@ -125,7 +170,11 @@ class MainActivity : AppCompatActivity() {
         return super.onKeyDown(keyCode, event)
     }
 
-    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<out String>,
+        grantResults: IntArray
+    ) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
 
         if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
@@ -147,7 +196,12 @@ class MainActivity : AppCompatActivity() {
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         if (requestCode == FILE_SELECTED_CODE) {
             if (resultCode == RESULT_OK) {
-                onFileSelected?.onReceiveValue(WebChromeClient.FileChooserParams.parseResult(resultCode, data))
+                onFileSelected?.onReceiveValue(
+                    WebChromeClient.FileChooserParams.parseResult(
+                        resultCode,
+                        data
+                    )
+                )
             }
             else {
                 onFileSelected?.onReceiveValue(null)
@@ -164,7 +218,8 @@ class MainActivity : AppCompatActivity() {
         val pickIntent = Intent(Intent.ACTION_PICK)
         pickIntent.setDataAndType(
             MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
-            MediaStore.Images.Media.CONTENT_TYPE)
+            MediaStore.Images.Media.CONTENT_TYPE
+        )
 
         val pickTitle = "사진을 가져옵니다."
         val chooserIntent = Intent.createChooser(pickIntent, pickTitle)
