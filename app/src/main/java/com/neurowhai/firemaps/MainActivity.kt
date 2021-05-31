@@ -1,6 +1,7 @@
 package com.neurowhai.firemaps
 
 import android.Manifest
+import android.content.DialogInterface
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
@@ -43,7 +44,7 @@ class MainActivity : AppCompatActivity() {
             webSettings.mediaPlaybackRequiresUserGesture = false
         }
 
-        mWebView.webViewClient = object: WebViewClient() {
+        mWebView.webViewClient = object : WebViewClient() {
             override fun onReceivedSslError(
                 view: WebView?,
                 handler: SslErrorHandler?,
@@ -60,7 +61,7 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-        mWebView.webChromeClient = object: WebChromeClient() {
+        mWebView.webChromeClient = object : WebChromeClient() {
             override fun onGeolocationPermissionsShowPrompt(
                 origin: String?,
                 callback: GeolocationPermissions.Callback?
@@ -76,13 +77,33 @@ class MainActivity : AppCompatActivity() {
                     )
                     == PackageManager.PERMISSION_DENIED
                 ) {
-                    // Request a permission for fine location.
-                    val permissions = arrayOf(Manifest.permission.ACCESS_FINE_LOCATION)
-                    ActivityCompat.requestPermissions(
-                        activity,
-                        permissions,
-                        LOCATION_PERMISSION_CODE
-                    )
+                    // Show permission information.
+                    val builder: AlertDialog.Builder = activity?.let {
+                        AlertDialog.Builder(it)
+                    }
+                    builder.setTitle("권한 설명")
+                    builder.setMessage("""
+지도에 사용자를 표시하기 위해서 위치 권한이 필요합니다.
+취소하시면 설정에서 수동 허용이 필요합니다.
+""".trimMargin())
+                    builder.setIcon(R.mipmap.ic_launcher_round)
+                    builder.apply {
+                        setPositiveButton(android.R.string.yes) { dialog, id ->
+                            // Request a permission for fine location.
+                            val permissions = arrayOf(Manifest.permission.ACCESS_FINE_LOCATION)
+                            ActivityCompat.requestPermissions(
+                                activity,
+                                permissions,
+                                LOCATION_PERMISSION_CODE
+                            )
+                        }
+                        setNegativeButton(android.R.string.no) { dialog, id ->
+                            // Do nothing.
+                        }
+                    }
+                    val dlg = builder.create()
+                    dlg.setCanceledOnTouchOutside(false)
+                    dlg.show()
                 }
             }
 
@@ -145,8 +166,7 @@ class MainActivity : AppCompatActivity() {
                         permissions,
                         STORAGE_PERMISSION_CODE
                     )
-                }
-                else {
+                } else {
                     selectFile()
                 }
 
@@ -182,8 +202,7 @@ class MainActivity : AppCompatActivity() {
                 LOCATION_PERMISSION_CODE -> mWebView.reload()
                 STORAGE_PERMISSION_CODE -> selectFile()
             }
-        }
-        else {
+        } else {
             when (requestCode) {
                 STORAGE_PERMISSION_CODE -> {
                     onFileSelected?.onReceiveValue(null)
@@ -202,8 +221,7 @@ class MainActivity : AppCompatActivity() {
                         data
                     )
                 )
-            }
-            else {
+            } else {
                 onFileSelected?.onReceiveValue(null)
                 onFileSelected = null
             }
