@@ -1,7 +1,6 @@
 package com.neurowhai.firemaps
 
 import android.Manifest
-import android.content.DialogInterface
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
@@ -15,6 +14,7 @@ import android.support.v7.app.AlertDialog
 import android.support.v7.app.AppCompatActivity
 import android.view.KeyEvent
 import android.webkit.*
+import android.webkit.WebView
 
 
 class MainActivity : AppCompatActivity() {
@@ -45,6 +45,12 @@ class MainActivity : AppCompatActivity() {
         }
 
         mWebView.webViewClient = object : WebViewClient() {
+            override fun shouldOverrideUrlLoading(view: WebView, url: String): Boolean {
+                val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
+                startActivity(intent)
+                return true
+            }
+
             override fun onReceivedSslError(
                 view: WebView?,
                 handler: SslErrorHandler?,
