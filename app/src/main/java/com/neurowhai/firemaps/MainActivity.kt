@@ -25,11 +25,11 @@ class MainActivity : AppCompatActivity() {
     private val FILE_SELECTED_CODE = 2001
 
     private lateinit var mWebView: WebView
+    private var geoLocationRequestOrigin: String? = null
+    private var geoLocationCallback: GeolocationPermissions.Callback? = null
     private var onFileSelected: ValueCallback<Array<Uri>>? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        val activity = this
-
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
@@ -66,38 +66,39 @@ class MainActivity : AppCompatActivity() {
                 origin: String?,
                 callback: GeolocationPermissions.Callback?
             ) {
-                super.onGeolocationPermissionsShowPrompt(origin, callback)
-
-                callback?.invoke(origin, true, true)
-
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M
-                    && ContextCompat.checkSelfPermission(
-                        mWebView.context,
+                if (ContextCompat.checkSelfPermission(
+                        this@MainActivity,
                         Manifest.permission.ACCESS_FINE_LOCATION
                     )
                     == PackageManager.PERMISSION_DENIED
                 ) {
-                    // Show permission information.
-                    AlertDialog.Builder(mWebView.context)
-                        .setTitle("권한 설명")
-                        .setMessage("""
+                    if (ActivityCompat.shouldShowRequestPermissionRationale(
+                            this@MainActivity,
+                            Manifest.permission.ACCESS_FINE_LOCATION
+                        )
+                    ) {
+                        // Show permission information.
+                        AlertDialog.Builder(this@MainActivity)
+                            .setTitle("권한 설명")
+                            .setMessage(
+                                """
 지도에 사용자를 표시하기 위해서 위치 권한이 필요합니다.
 취소하시면 설정에서 수동 허용이 필요합니다.
-""".trimMargin())
-                        .setPositiveButton(android.R.string.yes) { _, _ ->
-                            // Request a permission for fine location.
-                            val permissions = arrayOf(Manifest.permission.ACCESS_FINE_LOCATION)
-                            ActivityCompat.requestPermissions(
-                                activity,
-                                permissions,
-                                LOCATION_PERMISSION_CODE
+""".trimMargin()
                             )
-                        }
-                        .setNegativeButton(android.R.string.no) { _, _ ->
-                            // Do nothing.
-                        }
-                        .setCancelable(false)
-                        .show()
+                            .setPositiveButton(android.R.string.yes) { _, _ ->
+                                requestLocationPermission(origin, callback)
+                            }
+                            .setNegativeButton(android.R.string.no) { _, _ ->
+                                // Do nothing.
+                            }
+                            .setCancelable(false)
+                            .show()
+                    } else {
+                        requestLocationPermission(origin, callback)
+                    }
+                } else {
+                    callback?.invoke(origin, true, false)
                 }
             }
 
@@ -143,9 +144,8 @@ class MainActivity : AppCompatActivity() {
             ): Boolean {
                 onFileSelected = filePathCallback
 
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M
-                    && ContextCompat.checkSelfPermission(
-                        mWebView.context,
+                if (ContextCompat.checkSelfPermission(
+                        this@MainActivity,
                         Manifest.permission.READ_EXTERNAL_STORAGE
                     )
                     == PackageManager.PERMISSION_DENIED
@@ -156,7 +156,7 @@ class MainActivity : AppCompatActivity() {
                         Manifest.permission.WRITE_EXTERNAL_STORAGE
                     )
                     ActivityCompat.requestPermissions(
-                        activity,
+                        this@MainActivity,
                         permissions,
                         STORAGE_PERMISSION_CODE
                     )
@@ -193,11 +193,17 @@ class MainActivity : AppCompatActivity() {
 
         if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
             when (requestCode) {
-                LOCATION_PERMISSION_CODE -> mWebView.reload()
+                LOCATION_PERMISSION_CODE -> {
+                    geoLocationCallback?.invoke(geoLocationRequestOrigin, true, false)
+                    //mWebView.reload()
+                }
                 STORAGE_PERMISSION_CODE -> selectFile()
             }
         } else {
             when (requestCode) {
+                LOCATION_PERMISSION_CODE -> {
+                    geoLocationCallback?.invoke(geoLocationRequestOrigin, false, false)
+                }
                 STORAGE_PERMISSION_CODE -> {
                     onFileSelected?.onReceiveValue(null)
                     onFileSelected = null
@@ -220,6 +226,18 @@ class MainActivity : AppCompatActivity() {
                 onFileSelected = null
             }
         }
+    }
+
+    fun requestLocationPermission(origin: String?, callback: GeolocationPermissions.Callback?) {
+        geoLocationRequestOrigin = origin
+        geoLocationCallback = callback
+
+        val permissions = arrayOf(Manifest.permission.ACCESS_FINE_LOCATION)
+        ActivityCompat.requestPermissions(
+            this@MainActivity,
+            permissions,
+            LOCATION_PERMISSION_CODE
+        )
     }
 
     fun selectFile() {
