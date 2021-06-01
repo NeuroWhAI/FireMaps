@@ -78,17 +78,13 @@ class MainActivity : AppCompatActivity() {
                     == PackageManager.PERMISSION_DENIED
                 ) {
                     // Show permission information.
-                    val builder: AlertDialog.Builder = activity?.let {
-                        AlertDialog.Builder(it)
-                    }
-                    builder.setTitle("권한 설명")
-                    builder.setMessage("""
+                    AlertDialog.Builder(mWebView.context)
+                        .setTitle("권한 설명")
+                        .setMessage("""
 지도에 사용자를 표시하기 위해서 위치 권한이 필요합니다.
 취소하시면 설정에서 수동 허용이 필요합니다.
 """.trimMargin())
-                    builder.setIcon(R.mipmap.ic_launcher_round)
-                    builder.apply {
-                        setPositiveButton(android.R.string.yes) { dialog, id ->
+                        .setPositiveButton(android.R.string.yes) { _, _ ->
                             // Request a permission for fine location.
                             val permissions = arrayOf(Manifest.permission.ACCESS_FINE_LOCATION)
                             ActivityCompat.requestPermissions(
@@ -97,13 +93,11 @@ class MainActivity : AppCompatActivity() {
                                 LOCATION_PERMISSION_CODE
                             )
                         }
-                        setNegativeButton(android.R.string.no) { dialog, id ->
+                        .setNegativeButton(android.R.string.no) { _, _ ->
                             // Do nothing.
                         }
-                    }
-                    val dlg = builder.create()
-                    dlg.setCanceledOnTouchOutside(false)
-                    dlg.show()
+                        .setCancelable(false)
+                        .show()
                 }
             }
 
@@ -133,8 +127,8 @@ class MainActivity : AppCompatActivity() {
                 AlertDialog.Builder(view!!.context)
                     .setTitle("확인")
                     .setMessage(message)
-                    .setPositiveButton("확인") { _, _ -> result?.confirm() }
-                    .setNegativeButton("취소") { _, _ -> result?.cancel() }
+                    .setPositiveButton(android.R.string.yes) { _, _ -> result?.confirm() }
+                    .setNegativeButton(android.R.string.no) { _, _ -> result?.cancel() }
                     .setCancelable(false)
                     .create()
                     .show()
